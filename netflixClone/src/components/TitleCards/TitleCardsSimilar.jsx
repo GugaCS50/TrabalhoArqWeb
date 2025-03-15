@@ -1,10 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react'
-import './TitleCards.css'
+import React, { useEffect, useRef, useState } from 'react';
+import './TitleCards.css';
 import { Link } from 'react-router-dom';
 
-const TitleCardsSimilar = ({title}) => {
+const TitleCardsSimilar = ({ title }) => {
   const [apiData, setApiData] = useState([]);
-
   const cardsRef = useRef();
 
   const options = {
@@ -18,32 +17,45 @@ const TitleCardsSimilar = ({title}) => {
   const handleWheel = (event) => {
     event.preventDefault();
     cardsRef.current.scrollLeft += event.deltaY;
-  }
-
-  const lastWatchedId = localStorage.getItem('lastWatchedId') || '696506';
+  };
 
   useEffect(() => {
+    const favoriteMovies = JSON.parse(localStorage.getItem('favoriteMovies')) || [];
+    let allRecommendations = [];
 
-    fetch(`https://api.themoviedb.org/3/movie/${lastWatchedId}/similar?language=en-US&page=1`, options)
-    .then(res => res.json())
-    .then(res => setApiData(res.results))
-    .catch(err => console.error(err));
+    const fetchRecommendations = async () => {
+      for (const id of favoriteMovies) {
+        try {
+          const res = await fetch(`https://api.themoviedb.org/3/movie/${id}/similar?language=en-US&page=1`, options);
+          const data = await res.json();
+          allRecommendations = [...allRecommendations, ...data.results];
+        } catch (err) {
+          console.error(err);
+        }
+      }
+      
+      // Removendo duplicatas
+      const uniqueRecommendations = Array.from(new Map(allRecommendations.map(movie => [movie.id, movie])).values());
+      setApiData(uniqueRecommendations);
+    };
 
-    cardsRef.current.addEventListener('wheel', handleWheel)
-  },[])
+    fetchRecommendations();
+    cardsRef.current.addEventListener('wheel', handleWheel);
+  }, []);
+
   return (
     <div className='title_cards'>
-      <h2>{title?title:"Recomendados"}</h2>
-      <div className="card_list" ref={cardsRef}>
-        {apiData.map((card, index) => {
-          return <Link to={`/player/${card.id}`} className="card" key={index}>
-            <img src={`https://image.tmdb.org/t/p/w500`+card.poster_path} alt=''/>
+      <h2>{title ? title : 'Recomendados'}</h2>
+      <div className='card_list' ref={cardsRef}>
+        {apiData.map((card, index) => (
+          <Link to={`/player/${card.id}`} className='card' key={index}>
+            <img src={`https://image.tmdb.org/t/p/w500${card.poster_path}`} alt='' />
             <p>{card.original_title}</p>
           </Link>
-        })}
+        ))}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default TitleCardsSimilar
+export default TitleCardsSimilar;
